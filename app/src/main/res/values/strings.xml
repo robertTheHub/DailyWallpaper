@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Daily Wallpaper</string>
+    <string name="subreddit_error">Either there are no posts or that subreddit doesn\'t exist</string>
+    <string name="subreddit_hint">subreddit</string>
+    <string name="search">Search</string>
+    <string name="image_content">TOp Image from Subreddit</string>
 </resources>
