@@ -1,7 +1,6 @@
 package com.example.root.dailywallpaper;
 
 import android.app.WallpaperManager;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
@@ -10,6 +9,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,36 +26,41 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
 
 public class MainActivity extends AppCompatActivity {
     TextView mTextView;
-    ImageView mView;
     EditText mEditText;
     Button mButton;
+    GridView simpleGrid;
+    String[] urls;
+    int num_kids;
+    ImageAdapter imageAdapter;
+    Bitmap[] bitmap;
+    int objects = 0;
 
     // DownloadImage AsyncTask
-    private class DownloadImage extends AsyncTask<String, Void, Bitmap> {
+    private class DownloadImage extends AsyncTask<String, Void, Void> {
 
         @Override
-        protected Bitmap doInBackground(String... URL) {
-
-            String imageURL = URL[0];
-            Bitmap bitmap = null;
-            try {
-                InputStream input = new java.net.URL(imageURL).openStream();
-                bitmap = BitmapFactory.decodeStream(input);
-            } catch (Exception e) {
-                e.printStackTrace();
+        protected Void doInBackground(String... URL) {
+            bitmap = new Bitmap[objects];
+            for (int i = 0; i < objects; i++) {
+                try {
+                    InputStream input = new java.net.URL(URL[i]).openStream();
+                    bitmap[i] = BitmapFactory.decodeStream(input);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
-            return bitmap;
+            return null;
         }
 
         @Override
-        protected void onPostExecute(Bitmap result) {
-            mView.setImageBitmap(result);
+        protected void onPostExecute(Void result) {
             try {
-                WallpaperManager.getInstance(getApplicationContext()).setBitmap(result);
+                WallpaperManager.getInstance(getApplicationContext()).setBitmap(bitmap[0]);
+                imageAdapter = new ImageAdapter(getApplicationContext(), bitmap);
+                simpleGrid.setAdapter(imageAdapter);
             } catch (IOException e) {
                 // TODO Better Handle Errors
                 e.printStackTrace();
@@ -65,7 +70,6 @@ public class MainActivity extends AppCompatActivity {
 
     //Will get the top 25 posts from a subreddit, creating an array of urls
     private void queryReddit(String subreddit){
-        subreddit = subreddit.replaceAll("\\s","");
         if(subreddit.equalsIgnoreCase("")){
             subreddit = "iphonewallpapers";
         }
@@ -76,22 +80,24 @@ public class MainActivity extends AppCompatActivity {
                     public void onResponse(JSONObject response) {
                         try {
                             //Uses the response and checks if data is returned
-                            int num_kids = response.getJSONObject("data").getInt("dist");
+                            num_kids = response.getJSONObject("data").getInt("dist");
                             if (num_kids > 0){
+                                objects = 0;
                                 JSONArray kids = response.getJSONObject("data").getJSONArray("children");
-                                String[] urls = new String[num_kids];
+                                urls = new String[num_kids];
                                 for(int i =0; i<num_kids; i++) {
                                     response = kids.getJSONObject(i).getJSONObject("data");
                                     if (response.getString("post_hint").equals("image")) {
                                         urls[i] = response.getString("url");
+                                        objects++;
                                     }
                                 }
                                 mTextView.setText(urls[0]);
                                 new DownloadImage().execute(urls);
                             } else {
                                 Toast.makeText(getApplicationContext(), R.string.subreddit_error, Toast.LENGTH_SHORT).show();
+                                //TODO account for 404 errors
                             }
-
                         } catch (JSONException e) {
                             e.printStackTrace(); //TODO Better handle errors
                         }
@@ -102,7 +108,6 @@ public class MainActivity extends AppCompatActivity {
                         error.printStackTrace();
                     }
                 });
-
         Volley.newRequestQueue(this).add(jsonRequest);
     }
 
@@ -111,14 +116,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mTextView = (TextView) findViewById(R.id.text1);
-        mView = (ImageView) findViewById(R.id.imageView1);
         mEditText = (EditText) findViewById(R.id.editText);
         mButton = findViewById(R.id.button);
+        simpleGrid = (GridView) findViewById(R.id.gridView); // init GridView
+
         queryReddit("");
 
     }
         public void buttonClick(View v) {
-            queryReddit(mEditText.getText().toString());
+            queryReddit(mEditText.getText().toString().replaceAll("\\s",""));
         }
 }
 
